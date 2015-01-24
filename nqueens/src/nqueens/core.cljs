@@ -11,14 +11,12 @@
 (enable-console-print!)
 
 
-
 (defn safe? [col row placements] 
   (let [positions (map-indexed (fn [x y] [x y]) placements)
         not-in-row (fn [[x y]] (not= y row))
-        not-in-diag-1 (fn [[x y]] (not= (- y row) (- x col)))
-        not-in-diag-2 (fn [[x y]] (not= (- y row) (- col x)))
-        ]
-    (every? (every-pred not-in-row not-in-diag-1 not-in-diag-2) positions)))
+        not-in-diag (fn [[x y]] (every? #(not= (- y row) %) [(- x col) (- col x)]))]
+    (every? (every-pred not-in-row not-in-diag) positions)))
+
 
 (defn n-queens-seq [size]
   (letfn [(search [n]
@@ -83,15 +81,17 @@
 (defn show-board! [q-positions]
   (reset! positions q-positions))
 
-(defn slideshow []
+(defn slideshow [pause-time]
   (go
-    (doseq [queens (n-queens-seq 10 )]
+    (doseq [queens (n-queens-seq 8 )]
      (do
        (show-board! queens)
-       (<! (timeout 1500))))))
+       (<! (timeout pause-time))))))
 
 (om/root board  positions
          {:target (goog-dom/getElement "chessboard" )})
 
-(set! (.-onload js/window) slideshow)
+(defn default-show [] (slideshow 1500))
+
+(set! (.-onload js/window) default-show)
 
