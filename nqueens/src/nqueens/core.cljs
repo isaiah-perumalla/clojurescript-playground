@@ -50,48 +50,75 @@
           }
           .chess_board td { 
             background: BurlyWood;
-            width: 40px; height: 40px; 
-            font-size: 20px; 
+            width: 20px; height: 20px; 
+            font-size: 15px; 
             color: black; 
             text-align: center;
           }") )
 
 (defn draw-table [pos]
-(dom/table
-    #js {:className "chess_board"}
-    board-style
- (apply 
+  (dom/table
+   #js {:className "chess_board"}
+   board-style
+   (apply 
     dom/tbody nil
-
     (let [size (count pos)] 
       (do
         (map #(draw-row % pos) (range size))))))  )
 
 (defn board [state owner]
   (reify
+    om/IWillMount
+    (will-mount [_]
+      (go (loop []
+            (<! (timeout 1500))
+
+            (om/transact! state 
+                          (fn [s] (if-let [next (seq (rest s))] 
+                                    next
+                                    s)))
+              (recur ))))
     om/IRender
     (render [this]    
       (dom/div nil
-               (draw-table state)
+               (draw-table (first state))
                (dom/button nil "next")))))
 
+
+(defn boards-view [app owner]
+  (reify 
+    om/IInitState
+    (init-state [_]
+      {:add (chan)})
+    om/IWillMount
+    (will-mount [_]
+      (let [add-chan (om/get-state owner :add)]
+        (go (loop [] 
+              (let [board (<! add-chan)]
+                (om/transact! app :boards
+                              (fn [bs] (conj bs board))))
+              (recur)))))
+    om/IRenderState
+    (render-state [this {:keys [add]}]
+      (dom/div nil 
+               (dom/h2 nil "All Boards")
+               (dom/li nil 
+                       (dom/span nil "add")
+                       (dom/button #js {:onClick (fn [e] (put! add (seq (n-queens-seq 8))))} "add board"))
+               (apply dom/ul nil
+                      (om/build-all board (:boards app)))))))
+
+
+
+(def solutions [(seq (n-queens-seq 8 )) (seq (n-queens-seq 7)) ])
 (def positions
-  (atom  (vec (repeat 8 nil))))
+  (atom  {:boards solutions}))
 
-(defn show-board! [q-positions]
-  (reset! positions q-positions))
 
-(defn slideshow [pause-time]
-  (go
-    (doseq [queens (n-queens-seq 8 )]
-     (do
-       (show-board! queens)
-       (<! (timeout pause-time))))))
-
-(om/root board  positions
+(om/root boards-view  positions
          {:target (goog-dom/getElement "chessboard" )})
 
-(defn default-show [] (slideshow 1500))
 
-(set! (.-onload js/window) default-show)
+
+
 
