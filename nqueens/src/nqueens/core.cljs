@@ -21,10 +21,13 @@
 (defn n-queens-seq [size]
   (letfn [(search [n]
             (if (< n 0) [[]]
-                (for [arrangement (search (- n 1))
-                      row (range 0 size ) 
-                      :when (safe? n row arrangement)]
-                  (conj arrangement row))))]
+                
+                (do
+                  (for [arrangement (search (- n 1)) 
+                       row (range 0 size ) 
+                       :when (safe? n row arrangement)]
+                   (conj arrangement row)))))]
+
     (search (- size 1))))
 
 
@@ -66,23 +69,20 @@
       (do
         (map #(draw-row % pos) (range size))))))  )
 
+
 (defn board [state owner]
   (reify
     om/IWillMount
     (will-mount [_]
       (go (loop []
             (<! (timeout 1500))
-
             (om/transact! state 
-                          (fn [s] (if-let [next (seq (rest s))] 
-                                    next
-                                    s)))
+                          (fn [current] (if-let [next (seq (rest current))] next current)))
               (recur ))))
     om/IRender
     (render [this]    
-      (dom/div nil
-               (draw-table (first state))
-               (dom/button nil "next")))))
+      (dom/span  nil
+       (draw-table (first state))))))
 
 
 (defn boards-view [app owner]
@@ -105,15 +105,16 @@
                (dom/li nil 
                        (dom/span nil "add")
                        (dom/button #js {:onClick (fn [e] (put! add (seq (n-queens-seq 8))))} "add board"))
-               (apply dom/ul nil
+               (apply dom/div
+                      nil
                       (om/build-all board (:boards app)))))))
 
 
 
-(def solutions [(seq (n-queens-seq 8 )) (seq (n-queens-seq 7)) ])
+
+(def solutions [(seq (n-queens-seq 8 ))  (seq (n-queens-seq 7)) ])
 (def positions
   (atom  {:boards solutions}))
-
 
 (om/root boards-view  positions
          {:target (goog-dom/getElement "chessboard" )})
