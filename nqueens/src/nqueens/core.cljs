@@ -18,16 +18,13 @@
     (every? (every-pred not-in-row not-in-diag) positions)))
 
 
-(defn n-queens-seq [size]
+(defn n-queens [size]
   (letfn [(search [n]
             (if (< n 0) [[]]
-                
-                (do
-                  (for [arrangement (search (- n 1)) 
-                       row (range 0 size ) 
-                       :when (safe? n row arrangement)]
-                   (conj arrangement row)))))]
-
+                (for [arrangement (search (- n 1)) 
+                      row (range 0 size ) 
+                      :when (safe? n row arrangement)]
+                  (conj arrangement row))))]
     (search (- size 1))))
 
 
@@ -66,8 +63,7 @@
    (apply 
     dom/tbody nil
     (let [size (count pos)] 
-      (do
-        (map #(draw-row % pos) (range size))))))  )
+      (map #(draw-row % pos) (range size))))))
 
 
 (defn board [state owner]
@@ -81,9 +77,19 @@
               (recur ))))
     om/IRender
     (render [this]    
-      (dom/span  nil
+      (dom/div #js {:style #js {:display "inline-block" :padding "5px"}}
        (draw-table (first state))))))
 
+(defn get-queens [size]
+  (if-let [positions (seq (n-queens size))]
+    positions
+    [(seq (repeat size nil))]))
+
+(defn rand-board []
+  (let [rand-size (+ 2 (rand-int 8))]
+    (do
+      (.log js/console rand-size)
+      (get-queens rand-size))))
 
 (defn boards-view [app owner]
   (reify 
@@ -100,19 +106,17 @@
               (recur)))))
     om/IRenderState
     (render-state [this {:keys [add]}]
-      (dom/div nil 
-               (dom/h2 nil "All Boards")
-               (dom/li nil 
-                       (dom/span nil "add")
-                       (dom/button #js {:onClick (fn [e] (put! add (seq (n-queens-seq 8))))} "add board"))
-               (apply dom/div
-                      nil
-                      (om/build-all board (:boards app)))))))
+      (dom/div nil
+       (dom/h2 nil "All Boards")
+       (dom/button #js {:onClick (fn [e] (put! add  (rand-board)))} "add board")
+       (apply dom/div
+              nil
+              (om/build-all board (:boards app)))))))
 
 
 
 
-(def solutions [(seq (n-queens-seq 8 ))  (seq (n-queens-seq 7)) ])
+(def solutions [(get-queens 3)  (get-queens 8) ])
 (def positions
   (atom  {:boards solutions}))
 
